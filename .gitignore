@@ -1,0 +1,5 @@
+.lake/
+/build.log
+
+# Deployment settings for the agents; never part of the library.
+.env
