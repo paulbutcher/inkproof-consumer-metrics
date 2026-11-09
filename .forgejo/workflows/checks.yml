@@ -1,0 +1,82 @@
+# Required checks for every library and consumer repository. .forgejo/ is
+# code-owned by the human, so agents can't change this file without them.
+# No `uses:` actions: everything here is plain shell, so CI fetches no code
+# from outside. FORGE_URL and the proxy settings come from the runner.
+name: checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+defaults:
+  run:
+    shell: bash   # bash with -eo pipefail
+
+jobs:
+  build:
+    runs-on: docker
+    container:
+      image: inkproof-ci:1
+      volumes:
+        - inkproof-elan:/opt/elan/toolchains
+    env:
+      ELAN_HOME: /opt/elan
+      # ci-reader's token: reads every repository of this project, writes
+      # nothing. The job's own token reads only this repository.
+      TOKEN: ${{ secrets.DEPS_READ_TOKEN }}
+      # Every GitHub owner this project's repositories have lived under,
+      # current first; set by the kit's bootstrap.
+      GH_OWNERS: ${{ vars.DEPS_GITHUB_OWNERS }}
+    steps:
+      - name: Check out
+        run: |
+          echo /opt/elan/bin >> "$GITHUB_PATH"
+          auth="Authorization: Basic $(printf 'ci-reader:%s' "$TOKEN" | base64 -w0)"
+          git config --global "http.${FORGE_URL}/.extraHeader" "$auth"
+          # Dependencies keep their GitHub URLs; fetch this project's from Forgejo.
+          [ -n "$GH_OWNERS" ] || { echo "::error::The DEPS_GITHUB_OWNERS variable is not set; run the kit's bootstrap"; exit 1; }
+          for owner in $GH_OWNERS; do
+            git config --global --add "url.${FORGE_URL}/${GITHUB_REPOSITORY_OWNER}/inkproof-.insteadOf" \
+              "https://github.com/${owner}/inkproof-"
+          done
+          git init -q .
+          git remote add origin "${FORGE_URL}/${GITHUB_REPOSITORY}.git"
+          git fetch -q --tags origin "+${GITHUB_REF}:refs/ci/head" '+refs/heads/main:refs/remotes/origin/main'
+          git checkout -q --detach "$GITHUB_SHA"
+          git log -1 --format='Checked out %H: %s'
+
+      - name: Internal dependencies pinned to release tags
+        run: bash scripts/check-pins.sh
+
+      - name: Build, failing on sorry
+        run: |
+          lake build 2>&1 | tee build.log
+          if grep -qE 'declaration uses .sorry.' build.log; then
+            echo "::error::A declaration uses sorry"
+            exit 1
+          fi
+
+      # Lasm tests run where the test subproject pins Lasm in test/package-lock.json.
+      - name: Install Lasm
+        run: |
+          if [ -f test/package-lock.json ]; then
+            (cd test && npm ci --no-fund --no-audit)
+          else
+            echo "No test/package-lock.json; Lasm tests are skipped."
+          fi
+
+      - name: Tests
+        run: |
+          # Fail, rather than skip with a warning, if Lasm is pinned but missing.
+          if [ -f test/package-lock.json ]; then export INKPROOF_REQUIRE_LASM=1; fi
+          lake test
+
+      - name: API lock is up to date
+        run: |
+          if [ -f scripts/api-lock.sh ]; then
+            bash scripts/api-lock.sh > API.lock.generated
+            diff -u API.lock API.lock.generated
+          else
+            echo "::warning::scripts/api-lock.sh not implemented yet; skipping"
+          fi
