@@ -13,8 +13,8 @@ package «inkproof-consumer-metrics» where
   ]
   testDriver := "tests"
 
-require «inkproof-core» from git "https://github.com/tentenths/inkproof-core" @ "v0.1.0"
-require «inkproof-scale» from git "https://github.com/tentenths/inkproof-scale" @ "v0.1.0"
+require «inkproof-core» from git "https://github.com/paulbutcher/inkproof-core" @ "v0.1.0"
+require «inkproof-scale» from git "https://github.com/paulbutcher/inkproof-scale" @ "v0.1.0"
 
 @[default_target]
 lean_lib Metrics where

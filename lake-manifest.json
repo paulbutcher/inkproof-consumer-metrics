@@ -1,7 +1,7 @@
 {"version": "1.3.0",
  "packagesDir": ".lake/packages",
  "packages":
- [{"url": "https://github.com/tentenths/inkproof-scale",
+ [{"url": "https://github.com/paulbutcher/inkproof-scale",
    "type": "git",
    "subDir": null,
    "scope": "",
@@ -11,7 +11,7 @@
    "inputRev": "v0.1.0",
    "inherited": false,
    "configFile": "lakefile.lean"},
-  {"url": "https://github.com/tentenths/inkproof-core",
+  {"url": "https://github.com/paulbutcher/inkproof-core",
    "type": "git",
    "subDir": null,
    "scope": "",
