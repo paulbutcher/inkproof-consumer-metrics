@@ -2,7 +2,7 @@
 # Each line is a Go regular expression matched against a whole path, without
 # a leading slash; every matching line adds its owners, and each owner's
 # review request blocks the merge until they approve.
-.* @paulbutcher
+.* @paulbutcher @conformance
 API\.lock @paulbutcher
 \.forgejo/.* @paulbutcher
 lean-toolchain @paulbutcher
