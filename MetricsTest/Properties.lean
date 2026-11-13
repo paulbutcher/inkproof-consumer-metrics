@@ -3,14 +3,14 @@ Copyright (c) 2026 Paul Butcher. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Metrics
-import MetricsTest.Harness
+import InkproofTools.Test.Harness
 
 /-! Generated scrapes, checked against a naive computation over the raw samples that splits
 segments and assigns columns itself. -/
 
 namespace MetricsTest.Properties
 
-open Inkproof.Core Metrics
+open Inkproof.Core Metrics InkproofTools.Test
 
 /-- One generated scenario: the raw scrapes, the gap policy, and the window drawn. -/
 structure Case where
