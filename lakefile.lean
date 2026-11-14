@@ -13,8 +13,8 @@ package «inkproof-consumer-metrics» where
   ]
   testDriver := "tests"
 
-require «inkproof-core» from git "https://github.com/paulbutcher/inkproof-core" @ "v0.6.1"
-require «inkproof-scale» from git "https://github.com/paulbutcher/inkproof-scale" @ "v0.5.2"
+require «inkproof-core» from git "https://github.com/paulbutcher/inkproof-core" @ "v0.7.0"
+require «inkproof-scale» from git "https://github.com/paulbutcher/inkproof-scale" @ "v0.6.0"
 require «inkproof-tools» from git "https://github.com/paulbutcher/inkproof-tools" @ "v0.2.1"
 
 @[default_target]
