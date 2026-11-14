@@ -1,0 +1,57 @@
+def Metrics.Chart : Type
+structure Metrics.Extent : Type
+field Metrics.Extent.bottom : Metrics.Extent → Rat
+field Metrics.Extent.first : Metrics.Extent → Rat
+field Metrics.Extent.last : Metrics.Extent → Rat
+constructor Metrics.Extent.mk : Rat → Rat → Rat → Rat → Metrics.Extent
+field Metrics.Extent.top : Metrics.Extent → Rat
+structure Metrics.GapPolicy : Type
+def Metrics.GapPolicy.isGap : Metrics.GapPolicy → Metrics.Time → Metrics.Time → Bool
+theorem Metrics.GapPolicy.isGap_iff : ∀ (p : Metrics.GapPolicy) (a b : Metrics.Time), p.isGap a b = Bool.true ↔ p.staleAfter < b - a ∨ ∃ r, r ∈ p.restarts ∧ a < r ∧ r ≤ b
+theorem Metrics.GapPolicy.mem_breaks_segment : ∀ (p : Metrics.GapPolicy) (s : Metrics.Scrapes) (b : Nat), b ∈ (p.segment s).breaks ↔ ∃ h, p.staleAfter < s.xs[b] - s.xs[b - 1] ∨ ∃ r, r ∈ p.restarts ∧ s.xs[b - 1] < r ∧ r ≤ s.xs[b]
+constructor Metrics.GapPolicy.mk : Metrics.Time → Array Metrics.Time → Metrics.GapPolicy
+field Metrics.GapPolicy.restarts : Metrics.GapPolicy → Array Metrics.Time
+def Metrics.GapPolicy.segment : Metrics.GapPolicy → Metrics.Scrapes → Inkproof.Core.Segmented Metrics.Time Metrics.Reading
+field Metrics.GapPolicy.staleAfter : Metrics.GapPolicy → Metrics.Time
+def Metrics.Reading : Type
+def Metrics.Scrapes : Type
+def Metrics.Summary : Type
+def Metrics.Time : Type
+structure Metrics.View : Type
+def Metrics.View.Valid : Metrics.View → Prop
+def Metrics.View.column : Metrics.View → Metrics.Chart → Nat → Array (Option Metrics.Extent)
+def Metrics.View.columnStart : Metrics.View → Nat → Metrics.Time
+theorem Metrics.View.columnStart_eq : ∀ (v : Metrics.View) (c : Nat), v.columnStart c = v.start + ↑c * (v.stop - v.start) / ↑v.columns
+field Metrics.View.columns : Metrics.View → Nat
+def Metrics.View.extent : Metrics.View → Metrics.Summary → Option Metrics.Extent
+theorem Metrics.View.extent_eq_some : ∀ (v : Metrics.View) (s : Metrics.Summary) (e : Metrics.Extent), v.extent s = Option.some e ↔ ∃ f hi lo l, s = ({ get := Option.some f }, { get := Option.some hi }, { get := Option.some lo }, { get := Option.some l }) ∧ e = { first := v.yScale.map f, top := v.yScale.map hi, bottom := v.yScale.map lo, last := v.yScale.map l }
+theorem Metrics.View.getElem_column : ∀ (v : Metrics.View) (ch : Metrics.Chart) (c : Nat) {k : Nat} (hk : k < (v.column ch c).size), (v.column ch c)[k] = v.extent (Inkproof.Core.SegmentedPyramid.query ch (v.columnStart c) (v.columnStart (c + 1)))[k]
+theorem Metrics.View.getElem_render : ∀ (v : Metrics.View) (ch : Metrics.Chart) {c : Nat} (hc : c < (v.render ch).size), (v.render ch)[c] = v.column ch c
+field Metrics.View.height : Metrics.View → Nat
+field Metrics.View.high : Metrics.View → Metrics.Reading
+theorem Metrics.View.inRange_columnStart_iff : ∀ {v : Metrics.View}, v.Valid → ∀ (c : Nat) (x : Metrics.Time × Option Metrics.Reading), Inkproof.Core.Series.inRange (v.columnStart c) (v.columnStart (c + 1)) x = Bool.true ↔ ↑c ≤ v.xScale.map x.fst ∧ v.xScale.map x.fst < ↑c + 1
+field Metrics.View.low : Metrics.View → Metrics.Reading
+constructor Metrics.View.mk : Metrics.Time → Metrics.Time → Nat → Metrics.Reading → Metrics.Reading → Nat → Metrics.View
+def Metrics.View.render : Metrics.View → Metrics.Chart → Array (Array (Option Metrics.Extent))
+theorem Metrics.View.size_column : ∀ (v : Metrics.View) (ch : Metrics.Chart) (c : Nat), (v.column ch c).size = ch.segmented.numSegments
+theorem Metrics.View.size_render : ∀ (v : Metrics.View) (ch : Metrics.Chart), (v.render ch).size = v.columns
+field Metrics.View.start : Metrics.View → Metrics.Time
+field Metrics.View.stop : Metrics.View → Metrics.Time
+def Metrics.View.xScale : Metrics.View → Inkproof.Scale.Linear Rat
+theorem Metrics.View.xScale_increasing : ∀ {v : Metrics.View}, v.Valid → v.xScale.domainStart < v.xScale.domainEnd ∧ v.xScale.rangeStart < v.xScale.rangeEnd ∨ v.xScale.domainEnd < v.xScale.domainStart ∧ v.xScale.rangeEnd < v.xScale.rangeStart
+def Metrics.View.yScale : Metrics.View → Inkproof.Scale.Linear Rat
+theorem Metrics.View.yScale_decreasing : ∀ {v : Metrics.View}, v.Valid → v.yScale.domainStart < v.yScale.domainEnd ∧ v.yScale.rangeEnd < v.yScale.rangeStart ∨ v.yScale.domainEnd < v.yScale.domainStart ∧ v.yScale.rangeStart < v.yScale.rangeEnd
+theorem Metrics.View.yScale_map_le_iff : ∀ {v : Metrics.View}, v.Valid → ∀ (a b : Metrics.Reading), v.yScale.map a ≤ v.yScale.map b ↔ b ≤ a
+theorem Metrics.View.yScale_map_mem : ∀ {v : Metrics.View}, v.Valid → ∀ {r : Metrics.Reading}, v.low ≤ r → r ≤ v.high → 0 ≤ v.yScale.map r ∧ v.yScale.map r ≤ ↑v.height
+def Metrics.chart : Metrics.GapPolicy → Metrics.Scrapes → Metrics.Chart
+theorem Metrics.fold_summarise : ∀ (xs : Array (Metrics.Time × Option Metrics.Reading)), Inkproof.Core.Aggregate.fold Metrics.summarise xs = (Inkproof.Core.Aggregate.fold (fun p => { get := p.snd }) xs, Inkproof.Core.Aggregate.fold (fun p => { get := p.snd }) xs, Inkproof.Core.Aggregate.fold (fun p => { get := p.snd }) xs, Inkproof.Core.Aggregate.fold (fun p => { get := p.snd }) xs)
+def Metrics.inWindow : Metrics.Chart → Nat → Metrics.Time → Metrics.Time → Array (Metrics.Time × Option Metrics.Reading)
+instance Metrics.instBEqExtent : BEq Metrics.Extent
+def Metrics.instBEqExtent.beq : Metrics.Extent → Metrics.Extent → Bool
+instance Metrics.instReprExtent : Repr Metrics.Extent
+def Metrics.instReprExtent.repr : Metrics.Extent → Nat → Std.Format
+instance Metrics.instReprView : Repr Metrics.View
+def Metrics.instReprView.repr : Metrics.View → Nat → Std.Format
+theorem Metrics.query_chart : ∀ (p : Metrics.GapPolicy) (s : Metrics.Scrapes) (x₀ x₁ : Metrics.Time) {k : Nat} (hk : k < (Inkproof.Core.SegmentedPyramid.query (Metrics.chart p s) x₀ x₁).size), have q := (Inkproof.Core.SegmentedPyramid.query (Metrics.chart p s) x₀ x₁)[k]; have w := (Metrics.inWindow (Metrics.chart p s) k x₀ x₁).toList; q.fst.get = List.findSome? (fun x => x.snd) w ∧ q.snd.snd.snd.get = List.findSome? (fun x => x.snd) w.reverse ∧ (∀ (a : Metrics.Reading), q.snd.fst.get = Option.some a ↔ (∃ x, x ∈ w ∧ x.snd = Option.some a) ∧ ∀ (x : Metrics.Time × Option Metrics.Reading), x ∈ w → ∀ (b : Metrics.Reading), x.snd = Option.some b → b ≤ a) ∧ (∀ (a : Metrics.Reading), q.snd.snd.fst.get = Option.some a ↔ (∃ x, x ∈ w ∧ x.snd = Option.some a) ∧ ∀ (x : Metrics.Time × Option Metrics.Reading), x ∈ w → ∀ (b : Metrics.Reading), x.snd = Option.some b → a ≤ b) ∧ (q.snd.fst.get = Option.none ↔ ∀ (x : Metrics.Time × Option Metrics.Reading), x ∈ w → x.snd = Option.none)
+theorem Metrics.query_eq : ∀ (ch : Metrics.Chart) (x₀ x₁ : Metrics.Time) {k : Nat} (hk : k < (Inkproof.Core.SegmentedPyramid.query ch x₀ x₁).size), (Inkproof.Core.SegmentedPyramid.query ch x₀ x₁)[k] = Inkproof.Core.Aggregate.fold ch.measure (Metrics.inWindow ch k x₀ x₁)
+def Metrics.summarise : Metrics.Time × Option Metrics.Reading → Metrics.Summary
